@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Superstore Sales Dashboard</title>
+<meta name="description" content="Interactive sales & profitability dashboard for the Kaggle Sample Superstore dataset.">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page-plane:     #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --gridline:       #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --success-text:   #006300;
+
+    --series-1: #2a78d6; /* blue   - sales / positive */
+    --series-2: #eb6834; /* orange - profit series */
+    --series-3: #1baf7a; /* aqua */
+    --series-4: #eda100; /* yellow */
+    --series-5: #e87ba4; /* magenta */
+    --series-8: #e34948; /* red    - negative / loss */
+
+    --diverge-pos: #2a78d6;
+    --diverge-neg: #e34948;
+    --diverge-mid: #f0efec;
+
+    --card-radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --surface-1:      #1a1a19;
+      --page-plane:     #0d0d0d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --gridline:       #2c2c2a;
+      --baseline:       #383835;
+      --border:         rgba(255,255,255,0.10);
+      --success-text:   #0ca30c;
+
+      --series-1: #3987e5;
+      --series-2: #d95926;
+      --series-3: #199e70;
+      --series-4: #c98500;
+      --series-5: #d55181;
+      --series-8: #e66767;
+
+      --diverge-pos: #3987e5;
+      --diverge-neg: #e66767;
+      --diverge-mid: #383835;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --page-plane:     #0d0d0d;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --gridline:       #2c2c2a;
+    --baseline:       #383835;
+    --border:         rgba(255,255,255,0.10);
+    --success-text:   #0ca30c;
+
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+    --series-8: #e66767;
+
+    --diverge-pos: #3987e5;
+    --diverge-neg: #e66767;
+    --diverge-mid: #383835;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--page-plane);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 28px 20px 64px;
+  }
+
+  header.top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+  header.top h1 {
+    font-size: 1.5rem;
+    margin: 0 0 6px;
+    letter-spacing: -0.01em;
+  }
+  header.top p {
+    margin: 0;
+    color: var(--text-secondary);
+    max-width: 60ch;
+    font-size: 0.94rem;
+    line-height: 1.5;
+  }
+  .top-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .btn {
+    appearance: none;
+    border: 1px solid var(--border);
+    background: var(--surface-1);
+    color: var(--text-primary);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 0.85rem;
+    font-family: inherit;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn:hover { filter: brightness(0.97); }
+  :root[data-theme="dark"] .btn:hover { filter: brightness(1.15); }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .btn:hover { filter: brightness(1.15); }
+  }
+
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .kpi-tile {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: var(--card-radius);
+    padding: 14px 16px;
+  }
+  .kpi-tile .label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .kpi-tile .value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .kpi-tile .value.neg { color: var(--diverge-neg); }
+
+  .filter-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 22px;
+    padding: 12px 14px;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: var(--card-radius);
+  }
+  .filter-row label {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .filter-row select {
+    font-family: inherit;
+    font-size: 0.85rem;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--page-plane);
+    color: var(--text-primary);
+  }
+  .filter-row .reset {
+    margin-left: auto;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+  .grid .span-2 { grid-column: 1 / -1; }
+
+  figure.card {
+    margin: 0;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: var(--card-radius);
+    padding: 16px 18px 14px;
+    display: flex;
+    flex-direction: column;
+  }
+  figure.card .card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+  figure.card h2 {
+    font-size: 0.95rem;
+    margin: 0;
+    font-weight: 600;
+  }
+  figure.card .caption {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin: 0 0 10px;
+  }
+  .table-toggle {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 3px 8px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .chart-wrap { position: relative; height: 260px; }
+  .chart-wrap.tall { height: 340px; }
+
+  table.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+  }
+  table.data-table th, table.data-table td {
+    text-align: right;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--gridline);
+    font-variant-numeric: tabular-nums;
+  }
+  table.data-table th:first-child, table.data-table td:first-child {
+    text-align: left;
+    font-variant-numeric: normal;
+  }
+  table.data-table th {
+    color: var(--text-muted);
+    font-weight: 500;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  table.data-table td.neg { color: var(--diverge-neg); }
+  table.data-table td.pos { color: var(--text-primary); }
+
+  /* Heatmap */
+  .heatmap { display: flex; flex-direction: column; gap: 4px; }
+  .heatmap-row { display: grid; grid-template-columns: 90px repeat(3, 1fr); gap: 4px; align-items: center; }
+  .heatmap-row.head { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+  .heatmap-row .rowlabel { font-size: 0.8rem; color: var(--text-secondary); }
+  .heatcell {
+    border-radius: 6px;
+    padding: 10px 6px;
+    text-align: center;
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    position: relative;
+    cursor: default;
+  }
+  .heat-scale { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: 0.72rem; color: var(--text-muted); }
+  .heat-scale .bar { flex: 1; height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--diverge-neg), var(--diverge-mid), var(--diverge-pos)); }
+
+  .insights {
+    margin-top: 28px;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: var(--card-radius);
+    padding: 18px 20px;
+  }
+  .insights h2 { font-size: 1.05rem; margin: 0 0 12px; }
+  .insights ol { margin: 0; padding-left: 20px; }
+  .insights li { margin-bottom: 10px; font-size: 0.88rem; line-height: 1.5; color: var(--text-secondary); }
+  .insights li strong { color: var(--text-primary); }
+
+  footer.site {
+    margin-top: 28px;
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+  footer.site a { color: var(--text-secondary); }
+
+  .legend-note {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin: -2px 0 10px;
+  }
+  .legend-note .swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+
+  @media (max-width: 860px) {
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .grid { grid-template-columns: 1fr; }
+    .heatmap-row { grid-template-columns: 70px repeat(3, 1fr); }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="top">
+    <div>
+      <h1>Superstore Sales &amp; Profitability Dashboard</h1>
+      <p>Interactive view of the Kaggle Sample Superstore dataset (2015–2018) — filter by year and region to see how sales, profit and discounting behave across categories, regions and customers.</p>
+    </div>
+    <div class="top-actions">
+      <a class="btn" href="https://github.com/vismayaramesh18/superstore-sales-analysis" target="_blank" rel="noopener">View analysis repo</a>
+      <button class="btn" id="themeToggle" type="button" aria-label="Toggle color theme">🌓 Theme</button>
+    </div>
+  </header>
+
+  <section class="kpi-row" id="kpiRow" aria-label="Key metrics">
+    <div class="kpi-tile"><div class="label">Total Sales</div><div class="value" id="kpiSales">–</div></div>
+    <div class="kpi-tile"><div class="label">Total Profit</div><div class="value" id="kpiProfit">–</div></div>
+    <div class="kpi-tile"><div class="label">Profit Margin</div><div class="value" id="kpiMargin">–</div></div>
+    <div class="kpi-tile"><div class="label">Orders</div><div class="value" id="kpiOrders">–</div></div>
+    <div class="kpi-tile"><div class="label">Avg. Discount</div><div class="value" id="kpiDiscount">–</div></div>
+  </section>
+
+  <section class="filter-row">
+    <label>Year
+      <select id="yearFilter"><option value="all">All years</option></select>
+    </label>
+    <label>Region
+      <select id="regionFilter"><option value="all">All regions</option></select>
+    </label>
+    <button class="reset" id="resetFilters" type="button">Reset filters</button>
+  </section>
+
+  <main class="grid">
+
+    <figure class="card span-2">
+      <div class="card-head">
+        <h2>Monthly Sales &amp; Profit</h2>
+        <button class="table-toggle" data-target="monthlyTrend">Table view</button>
+      </div>
+      <p class="caption">Both series share one USD axis. Sales trend upward with a sharp Nov–Dec seasonal peak each year.</p>
+      <div class="chart-wrap tall"><canvas id="monthlyTrendChart"></canvas></div>
+      <div class="table-view" id="monthlyTrend-table" hidden></div>
+    </figure>
+
+    <figure class="card">
+      <div class="card-head">
+        <h2>Sales vs. Profit by Category</h2>
+        <button class="table-toggle" data-target="category">Table view</button>
+      </div>
+      <p class="caption">Furniture sells almost as much as Technology but converts far less of it to profit.</p>
+      <div class="chart-wrap"><canvas id="categoryChart"></canvas></div>
+      <div class="table-view" id="category-table" hidden></div>
+    </figure>
+
+    <figure class="card">
+      <div class="card-head">
+        <h2>Sales vs. Profit by Segment</h2>
+        <button class="table-toggle" data-target="segment">Table view</button>
+      </div>
+      <p class="caption">Consumer drives the most revenue; Home Office converts it most efficiently.</p>
+      <div class="chart-wrap"><canvas id="segmentChart"></canvas></div>
+      <div class="table-view" id="segment-table" hidden></div>
+    </figure>
+
+    <figure class="card span-2">
+      <div class="card-head">
+        <h2>Profit by Sub-Category</h2>
+        <button class="table-toggle" data-target="subcategory">Table view</button>
+      </div>
+      <p class="caption">Bars cross zero by position, not color alone — blue is profitable, red is a net loss.</p>
+      <div class="legend-note"><span><span class="swatch" style="background:var(--diverge-pos)"></span>Profitable</span><span><span class="swatch" style="background:var(--diverge-neg)"></span>Net loss</span></div>
+      <div class="chart-wrap tall"><canvas id="subcategoryChart"></canvas></div>
+      <div class="table-view" id="subcategory-table" hidden></div>
+    </figure>
+
+    <figure class="card">
+      <div class="card-head">
+        <h2>Avg. Margin by Discount Band</h2>
+        <button class="table-toggle" data-target="discount">Table view</button>
+      </div>
+      <p class="caption">Margin holds up to ~20% discount, then falls off a cliff.</p>
+      <div class="chart-wrap"><canvas id="discountChart"></canvas></div>
+      <div class="table-view" id="discount-table" hidden></div>
+    </figure>
+
+    <figure class="card">
+      <div class="card-head">
+        <h2>Profit by Region × Category</h2>
+      </div>
+      <p class="caption">West converts sales to profit most efficiently; Central lags across every category.</p>
+      <div class="heatmap" id="heatmap"></div>
+      <div class="heat-scale"><span id="heatMinLabel">min</span><span class="bar"></span><span id="heatMaxLabel">max</span></div>
+    </figure>
+
+    <figure class="card span-2">
+      <div class="card-head">
+        <h2>Top Loss-Making Customers</h2>
+      </div>
+      <p class="caption">Customers with negative lifetime profit under the current filter, worst first.</p>
+      <div id="lossTableWrap"></div>
+    </figure>
+
+  </main>
+
+  <section class="insights">
+    <h2>Business recommendations</h2>
+    <ol>
+      <li><strong>Cap discounts on Tables and Bookcases</strong> — both run at a net loss overall, driven by discounts averaging above 20%.</li>
+      <li><strong>Set a hard discount ceiling around 20%</strong> in the quoting workflow — average margin turns negative past that point and keeps falling.</li>
+      <li><strong>Audit the Central region specifically</strong> — its profit margin trails the West by roughly half, despite comparable or higher sales volume.</li>
+      <li><strong>Review loss-making accounts before renewal</strong> — around one in five customers is net loss-making across their order history.</li>
+      <li><strong>Plan Q4 inventory and staffing ahead of time</strong> — the November–December spike repeats every year in this data.</li>
+    </ol>
+  </section>
+
+  <footer class="site">
+    Data: <a href="https://www.kaggle.com/datasets/vivek468/superstore-dataset-final" target="_blank" rel="noopener">Sample Superstore (Kaggle)</a> ·
+    Full write-up: <a href="https://github.com/vismayaramesh18/superstore-sales-analysis" target="_blank" rel="noopener">superstore-sales-analysis</a>
+  </footer>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
