@@ -4,6 +4,7 @@ A data analysis project on the classic **Sample Superstore** dataset (Kaggle) �
 
 > **Where is this company making money, where is it quietly losing money, and what should leadership do about it?**
 
+🔗 **[Live interactive dashboard](https://vismayaramesh18.github.io/superstore-sales-analysis/)** — filter by year/region and explore the charts yourself.
 📓 **[Read the full notebook](notebooks/superstore_sales_analysis.ipynb)** — data quality checks, SQL analysis, charts, and recommendations, in that order.
 
 ## Why this project
@@ -64,6 +65,10 @@ jupyter notebook notebooks/superstore_sales_analysis.ipynb
 ├── notebooks/
 │   └── superstore_sales_analysis.ipynb   # full analysis, executed with outputs
 ├── images/                          # exported chart images (used in this README)
+├── docs/                            # interactive dashboard, served via GitHub Pages
+│   ├── index.html
+│   ├── app.js
+│   └── data.json
 ├── requirements.txt
 └── README.md
 ```
